@@ -2,12 +2,13 @@
 // CRI Mana (los vídeos) mide la reproducción con GetProgramTotalActiveTime (main+0xa5154c), y con 0
 // fijo el vídeo se queda en los primeros frames.
 //
-// La Flip es una consola en modo portátil que nunca cambia de estado: rendimiento normal, siempre en primer
-// plano y sin mensajes del sistema (los eventos de aviso existen pero no se señalan nunca). Grabación, capturas
-// y la imagen de copyright no tienen dónde ir.
+// La Flip es una consola en modo portátil que nunca cambia de estado (salvo el modo TV, fijo en cada sesión:
+// nnsdk::tv_mode): rendimiento normal, siempre en primer plano y sin mensajes del sistema (los eventos de aviso
+// existen pero no se señalan nunca). Grabación, capturas y la imagen de copyright no tienen dónde ir.
 
 #include <sys/system_properties.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <atomic>
 #include <cstdio>
@@ -15,6 +16,7 @@
 #include <cstring>
 #include <string>
 
+#include "nnsdk/runtime.h"
 #include "nnsdk/types.h"
 
 namespace nn {
@@ -120,15 +122,16 @@ void GetDisplayVersion(DisplayVersion* out) {
     strcpy(out->value, "16.0.1");
 }
 
-OperationMode GetOperationMode() { return OperationMode_Handheld; }
-PerformanceMode GetPerformanceMode() { return PerformanceMode_Normal; }
+// Portátil salvo en modo TV (nnsdk::tv_mode), que es la consola en la base: el juego elige con esto su resolución.
+OperationMode GetOperationMode() { return nnsdk::tv_mode() ? OperationMode_Console : OperationMode_Handheld; }
+PerformanceMode GetPerformanceMode() { return nnsdk::tv_mode() ? PerformanceMode_Boost : PerformanceMode_Normal; }
 FocusState GetCurrentFocusState() { return FocusState_InFocus; }
 bool IsCpuOverclockEnabled() { return false; }
 
-// La resolución del modo portátil, como la consola en la mano.
+// La resolución de la pantalla: la del portátil, o la de la tele en modo TV.
 void GetDefaultDisplayResolution(int* width, int* height) {
-    *width = 1280;
-    *height = 720;
+    *width = nnsdk::tv_mode() ? 1920 : 1280;
+    *height = nnsdk::tv_mode() ? 1080 : 720;
 }
 void GetDefaultDisplayResolutionChangeEvent(os::SystemEvent*) {}
 
@@ -223,3 +226,18 @@ void EnableCrashReport() {}
 void DisableCrashReport() {}
 
 }  // namespace nn::oe
+
+namespace nnsdk {
+
+bool tv_mode() {
+    static const bool on = [] {
+        const char* env = getenv("NIER_DATA");
+        const std::string path = std::string(env ? env : "/sdcard/NieR") + "/modo_tv";
+        const bool v = access(path.c_str(), F_OK) == 0;
+        printf("[oe] modo %s\n", v ? "TV (base, mando Pro en No1)" : "portátil");
+        return v;
+    }();
+    return on;
+}
+
+}  // namespace nnsdk

@@ -188,6 +188,8 @@ constexpr uint32_t kStyleFullKey = 1u << 0, kStyleHandheld = 1u << 1, kStyleJoyD
                    kStyleJoyRight = 1u << 4, kStyleGc = 1u << 5;
 // Atributos del estado: conectado, con cable, mitad izquierda y derecha conectadas y con cable.
 constexpr uint32_t kHandheldAttributes = 0x3F;
+// El mando Pro: conectado y con cable (va por USB o Bluetooth, pero así no pide batería ni emparejar).
+constexpr uint32_t kProAttributes = 0x3;
 
 // Errores del módulo hid (202) que el SDK deja pasar al juego en vez de abortar.
 constexpr Result kResultNpadIsDualJoyCon{202 | 601 << 9};
@@ -208,7 +210,14 @@ std::atomic<int64_t> g_sampling{0};
 
 bool handheld_connected() { return nnsdk::host().input != nullptr; }
 
-uint32_t style_of(NpadIdType id) { return id == kNpadHandheld && handheld_connected() ? kStyleHandheld : 0; }
+// Dónde está el mando de la Flip: el portátil, o en modo TV (nnsdk::tv_mode) un mando Pro en No1, que es lo que ve el
+// juego en la consola en la base con un mando Pro (el portátil no cuenta como mando fuera de la mano).
+NpadIdType pad_id() { return nnsdk::tv_mode() ? 0 : kNpadHandheld; }
+uint32_t pad_style() { return nnsdk::tv_mode() ? kStyleFullKey : kStyleHandheld; }
+// Tipo de los handles de sensor y vibración del mando (índice del estilo + 3): 3 el Pro, 4 el portátil.
+uint32_t pad_handle_type() { return nnsdk::tv_mode() ? 3 : 4; }
+
+uint32_t style_of(NpadIdType id) { return id == pad_id() && handheld_connected() ? pad_style() : 0; }
 
 // El estado de un estilo solo trae datos si es el que tiene el mando: GetNpadState(NpadFullKeyState*, Handheld) da en
 // una Switch un mando desconectado, y así no se cuenta dos veces la misma pulsación si el juego lee varios estilos.
@@ -261,7 +270,7 @@ void fill_state(void* state, NpadIdType id, uint32_t style) {
         last = buttons;
     }
     out->lx = in->sticks[0], out->ly = in->sticks[1], out->rx = in->sticks[2], out->ry = in->sticks[3];
-    out->attributes = kHandheldAttributes;
+    out->attributes = nnsdk::tv_mode() ? kProAttributes : kHandheldAttributes;
 }
 
 // Número de muestra de lo que no tiene estado propio (táctil, ratón, teclado, sensores): avanza al ritmo del muestreo
@@ -312,7 +321,7 @@ Result controller_support(ControllerSupportResultInfo* out, const ControllerSupp
     if (arg.storage[0] > 1) return kResultControllerSupportCanceled;
     if (out) {
         out->player_count = 1;
-        out->selected_id = kNpadHandheld;
+        out->selected_id = pad_id();
     }
     return ResultSuccess;
 }
@@ -350,7 +359,7 @@ bool vibration_off() { return NVN_FLAG("sin_vibracion"); }
 // Qué actuador del portátil nombra un handle (ver GetVibrationDeviceHandles), o -1 si es de un hueco sin mando.
 int actuator_of(const VibrationDeviceHandle& handle) {
     const uint32_t type = handle.storage & 0xFF, id = handle.storage >> 8 & 0xFF, index = handle.storage >> 16 & 0xFF;
-    return type == 4 && id == kNpadHandheld && index < 2 && handheld_connected() ? static_cast<int>(index) : -1;
+    return type == pad_handle_type() && id == pad_id() && index < 2 && handheld_connected() ? static_cast<int>(index) : -1;
 }
 
 // La consola tiene un solo motor para los dos actuadores: va con el que más pida. Las dos bandas de un actuador
@@ -670,7 +679,7 @@ void GetSixAxisSensorState(SixAxisSensorState* out, const SixAxisSensorHandle& h
     memset(out, 0, sizeof *out);
     out->sampling_number = sample_clock();
     out->delta_time = 5'000'000;
-    if ((handle.storage >> 8 & 0xFF) != kNpadHandheld || !handheld_connected()) return;
+    if ((handle.storage >> 8 & 0xFF) != pad_id() || !handheld_connected()) return;
     out->acceleration[2] = -1.0f;
     out->direction[0] = out->direction[4] = out->direction[8] = 1.0f;
     out->attributes = 1;

@@ -12,11 +12,13 @@ own ARM64 code runs directly on the device's CPU, while this project reimplement
 
 ## Status
 
-**Version 0.1 — playable, early.** Tested on the Flip 2 from the title screen into the prologue (the Paris
+**Version 0.2 — playable, early.** Tested on the Flip 2 from the title screen into the prologue (the Paris
 harbour and the first rooms of the sewers): 60 fps, upscaled from the game's 720p output to 1080p with AMD FSR 1 when it fits in the frame
 and with a lighter bilinear + RCAS pass when it does not. It has not been played through yet: later areas may still show
 problems.
 
+- **TV mode** (settings panel): the game renders as it does on a TV, at 1344×756 instead of 896×504 and output at a
+  full 1080p; it still holds 60 fps on the Flip 2. Takes effect the next time the app is opened.
 - Not tied to one game version: it was prepared with 1.1.0 and other versions are accepted with a notice.
 
 ## Why only the Retroid Pocket 5 and Flip 2
@@ -76,10 +78,10 @@ may stutter while its shaders are translated and compiled; they are cached for t
 
 - **The face buttons follow the device's controller mode.** In both of the Retroid's modes (Xbox and Retro) every button
   does what the button in that same place does on the game's original console: B at the bottom, A on the right, X on top,
-  Y on the left. You can change the mode from the quick settings while the game is running. Any other controller is read
-  by position too.
+  Y on the left. You can change the mode from the quick settings while the game is running. Any other controller, over
+  USB or Bluetooth (a DualSense, for example), is read by position too: its bottom button is B.
 - **Settings panel.** Swipe in from the right edge of the screen (the system's back gesture, the one that shows an arrow)
-  and a panel slides out over the game. It has a switch for the FPS counter (your choice is remembered) and *Change
+  and a panel slides out over the game. It has a switch for the FPS counter (your choice is remembered), *TV mode* and *Change
   folder*, which brings the folder screen back the next time you open the app. The same swipe, a tap outside the panel
   or a few seconds without touching it hide it again.
 
@@ -90,6 +92,7 @@ at start-up.
 
 | Name | Effect |
 |---|---|
+| `modo_tv` | TV mode (the same switch as in the settings panel): the game renders as it does on a TV. Read at start-up. |
 | `sin_fps` | Hides the FPS counter (the same switch as in the settings panel). |
 | `botones_xbox`, `botones_retro` | Force the face buttons to be read by position (`botones_xbox`) or by name (`botones_retro`) if a controller comes out swapped. |
 | `registro` | Verbose log (line by line) plus a watchdog that prints the game's stack if it hangs. Slower: for debugging. |
@@ -157,8 +160,9 @@ CPU y este proyecto reimplementa el SDK de la consola y la API gráfica NVN sobr
   ajustado a ese chip y a sus límites (60 fps con presupuesto de 16,7 ms por frame, ~2,7 GB de memoria libre, núcleos
   grandes para el juego). Probado en la Flip 2.
 - Los botones quedan donde están en la consola original del juego en los dos modos del mando de la Retroid (Xbox y
-  Retro). Deslizando un dedo desde el borde derecho de la pantalla sale un panel de ajustes, con el interruptor del
-  contador de FPS y el de volver a elegir la carpeta. Con la carpeta ya elegida, la app abre el juego directamente.
+  Retro), y cualquier otro mando, por USB o Bluetooth, se lee por posición. Deslizando un dedo desde el borde derecho de
+  la pantalla sale un panel de ajustes, con el interruptor del contador de FPS, el del modo TV y el de volver a elegir la
+  carpeta. Con la carpeta ya elegida, la app abre el juego directamente.
 - Proyecto de fans, gratis (las donaciones son opcionales y no desbloquean nada), sin relación con el fabricante de la consola ni
   con Konami.
 - Si quieres apoyar el trabajo: [ko-fi.com/iamwilmar](https://ko-fi.com/iamwilmar). Es opcional y no desbloquea nada: todas las versiones son gratis e iguales para todos.
